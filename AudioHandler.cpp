@@ -562,6 +562,8 @@ void AudioHandler::SetMusicDuckingGain(byte s_ducking) {
 boolean AudioHandler::StopSound(unsigned short soundIndex) {
 #if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
   wTrig.trackStop(soundIndex);
+#else
+  (void)soundIndex;
 #endif
   return false;
 }
@@ -684,12 +686,19 @@ boolean AudioHandler::QueuePrioritizedNotification(unsigned short notificationIn
   } else {
     PushToNotificationStack(notificationIndex, notificationLength, priority);
   }
+#else
+  // Phony stuff to get rid of warnings
+  (void)notificationIndex;
+  (void)notificationLength;
+  (void)priority;
+  (void)currentTime;
 #endif
 
   return true;
 }
 
 void AudioHandler::OutputTracksPlaying() {
+#if defined (USE_WAV_TRIGGER) || defined (USE_WAV_TRIGGER_1p3)
   int i;
   char buf[256];
   sprintf(buf, "nothing");
@@ -705,13 +714,14 @@ void AudioHandler::OutputTracksPlaying() {
       Serial.write(buf);
     }
   }
+#endif
 }
 
 
 
-void AudioHandler::ServiceNotificationQueue(unsigned long currentTime) {
+boolean AudioHandler::ServiceNotificationQueue(unsigned long currentTime) {
+  boolean queueStillHasEntries = true;
 #if defined (USE_WAV_TRIGGER) || defined (USE_WAV_TRIGGER_1p3)
-
   boolean playNextNotification = false;
 
   if (nextVoiceNotificationPlayTime != 0) { 
@@ -759,9 +769,14 @@ void AudioHandler::ServiceNotificationQueue(unsigned long currentTime) {
       nextVoiceNotificationPlayTime = 0;
       currentNotificationPlaying = INVALID_SOUND_INDEX;
       currentNotificationPriority = 0;
+      queueStillHasEntries = false;
     }
   } 
+#else
+  (void)currentTime;
 #endif
+
+  return queueStillHasEntries;
 }
 
 
@@ -838,7 +853,7 @@ boolean AudioHandler::PlaySound(unsigned short soundIndex, byte audioType, byte 
 #if (BALLY_STERN_OS_HARDWARE_REV==2) && defined(BALLY_STERN_OS_USE_SB100)
     BSOS_PlaySB100Chime((byte)soundIndex);
     soundPlayed = true;
-#endif     
+#endif
   } else if (audioType==AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS) {
 #ifdef BALLY_STERN_OS_USE_DASH51
     BSOS_PlaySoundDash51((byte)soundIndex);
@@ -851,7 +866,7 @@ boolean AudioHandler::PlaySound(unsigned short soundIndex, byte audioType, byte 
 #ifdef BALLY_STERN_OS_USE_SB100
     BSOS_PlaySB100((byte)soundIndex);
     soundPlayed = true;
-#endif       
+#endif
   } else if (audioType==AUDIO_PLAY_TYPE_WAV_TRIGGER) {
 #if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
 #ifdef USE_WAV_TRIGGER
@@ -861,8 +876,10 @@ boolean AudioHandler::PlaySound(unsigned short soundIndex, byte audioType, byte 
     wTrig.trackPlayPoly(soundIndex);
     wTrig.trackGain(soundIndex, gain);
     soundPlayed = true;
-#endif    
+#endif
   }
+  (void)gain;
+  (void)soundIndex;
 
   return soundPlayed;  
 }
@@ -873,7 +890,11 @@ boolean AudioHandler::FadeSound(unsigned short soundIndex, int fadeGain, int num
 #if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
   wTrig.trackFade(soundIndex, fadeGain, numMilliseconds, stopTrack);
   soundFaded = true;
-#endif  
+#endif
+  (void)soundIndex;
+  (void)fadeGain;
+  (void)numMilliseconds;
+  (void)stopTrack;
   return soundFaded;
 }
 
@@ -947,10 +968,13 @@ boolean AudioHandler::PlaySoundCardWhenPossible(unsigned short soundEffectNum, u
   SoundEffectQueue[count].inUse = true;
 #else 
   // Phony stuff to get rid of warnings
-  unsigned long totalval = soundEffectNum + requestedPlayTime + playUntil + priority;
-  totalval += 1;
+  (void)soundEffectNum;
+  (void)currentTime;
+  (void)requestedPlayTime;
+  (void)playUntil;
+  (void)priority;
   return false;
-#endif  
+#endif
   return true;
 }
 
@@ -1042,7 +1066,7 @@ boolean AudioHandler::ServiceSoundCardQueue(unsigned long currentTime) {
   unsigned long totalval = currentTime;
   totalval += 1;
   return false;
-#endif 
+#endif
 }
 
 
@@ -1077,9 +1101,9 @@ boolean AudioHandler::PlayBackgroundSong(unsigned short trackIndex, boolean loop
     wTrig.trackGain(trackIndex, musicGain);
 #endif
   }
-
-  return trackPlayed;
+  (void)loopTrack;
   
+  return trackPlayed;  
 }
 
 
@@ -1141,7 +1165,7 @@ void AudioHandler::ManageBackgroundSong(unsigned long currentTime) {
     if (!wTrig.isTrackPlaying(currentBackgroundTrack)) {
       StartNextSoundtrackSong(currentTime);
     }
-#endif    
+#endif
   }
 }
 
@@ -1149,10 +1173,11 @@ void AudioHandler::ManageBackgroundSong(unsigned long currentTime) {
 boolean AudioHandler::Update(unsigned long currentTime) {
 #if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
   wTrig.update();
-#endif  
+#endif
+  boolean queueHasEntries = false;
   ManageBackgroundSong(currentTime);
   ServiceSoundQueue(currentTime);
   ServiceSoundCardQueue(currentTime);
-  ServiceNotificationQueue(currentTime);
-  return true;
+  if (ServiceNotificationQueue(currentTime)) queueHasEntries = true;
+  return queueHasEntries;
 }

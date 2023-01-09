@@ -4,8 +4,13 @@
 
 
 #include <HardwareSerial.h>
+#if __has_include("BSOS_Config.h")
+#include "BSOS_Config.h"
+#include "BallySternOS.h"
+#elif __has_include("WOS_Config.h")
 #include "WOS_Config.h"
 #include "WOS.h"
+#endif
 
 
 #define AUDIO_PLAY_TYPE_CHIMES            1
@@ -235,7 +240,7 @@ class AudioHandler
     void InitSoundEffectQueue();
     void StartNextSoundtrackSong(unsigned long currentTime);
     void ManageBackgroundSong(unsigned long currentTime);
-    void ServiceNotificationQueue(unsigned long currentTime);
+    boolean ServiceNotificationQueue(unsigned long currentTime);
     void PushToNotificationStack(unsigned int notification, unsigned int duration, byte priority);
     byte GetTopNotificationPriority();
     boolean ServiceSoundCardQueue(unsigned long currentTime);
