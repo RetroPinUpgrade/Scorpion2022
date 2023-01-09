@@ -12,6 +12,14 @@ volatile byte LampFlashPeriod[WOS_MAX_LAMPS];
 byte DimDivisor1 = 2;
 byte DimDivisor2 = 3;
 
+#ifndef WOS_NUM_DIGITS
+#define WOS_NUM_DIGITS  6
+#endif
+
+#ifndef INTERRUPT_OCR1A_COUNTER
+#define INTERRUPT_OCR1A_COUNTER 16574
+#endif
+
 volatile byte DisplayDigits[4][WOS_NUM_DIGITS];
 volatile byte DisplayCreditDigits[2];
 volatile byte DisplayCreditDigitEnable;
@@ -601,7 +609,7 @@ void WOS_SetupInterrupt() {
   TCNT1  = 0;//initialize counter value to 0
   // set compare match register for selected increment
 //  OCR1A = 16574;
-  OCR1A = 14900;
+  OCR1A = INTERRUPT_OCR1A_COUNTER;
   // turn on CTC mode
   TCCR1B |= (1 << WGM12);
   // Set CS10 and CS12 bits for 1024 prescaler
@@ -1264,7 +1272,11 @@ ISR(TIMER1_COMPA_vect) {    //This is the interrupt request (running at 965.3 Hz
     }
 
     WOS_DataWrite(PIA_SOLENOID_PORT_A, portA);
+#ifdef WILLIAMS_11_MPU
     WOS_DataWrite(PIA_SOLENOID_11_PORT_B, portB);
+#else 
+    WOS_DataWrite(PIA_SOLENOID_PORT_B, portB);
+#endif    
   }
 
 //  WOS_DataWrite(PIA_SOLENOID_11_PORT_B, InterruptPass);
