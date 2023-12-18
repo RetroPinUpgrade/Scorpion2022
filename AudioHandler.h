@@ -17,9 +17,9 @@
 #define AUDIO_PLAY_TYPE_ORIGINAL_SOUNDS   2
 #define AUDIO_PLAY_TYPE_WAV_TRIGGER       4
 
-#define NUMBER_OF_SONGS_REMEMBERED    20
+#define NUMBER_OF_SONGS_REMEMBERED    10
 
-#define VOICE_NOTIFICATION_STACK_SIZE   10
+#define VOICE_NOTIFICATION_STACK_SIZE   5
 #define VOICE_NOTIFICATION_STACK_EMPTY  0xFFFF
 
 #define BACKGROUND_TRACK_NONE           0xFFFF
@@ -43,7 +43,7 @@ struct SoundCardCommandEntry {
   unsigned long playTime;
 };
 
-#define SOUND_QUEUE_SIZE 100
+#define SOUND_QUEUE_SIZE 30
 
 struct SoundEntry {
   unsigned short soundIndex;
@@ -209,13 +209,14 @@ class AudioHandler
     unsigned int voiceNotificationNumStack[VOICE_NOTIFICATION_STACK_SIZE];
     unsigned int voiceNotificationDuration[VOICE_NOTIFICATION_STACK_SIZE];
     unsigned int lastSongsPlayed[NUMBER_OF_SONGS_REMEMBERED];
+    unsigned long currentNotificationStartTime;
     unsigned long nextSoundtrackPlayTime;    
     unsigned short curSoundtrackEntries;
     unsigned short currentBackgroundTrack;
 
     SoundEntry soundQueue[SOUND_QUEUE_SIZE];
 
-#ifdef WILLIAMS_TYPE_1_SOUND
+#if defined(WILLIAMS_TYPE_1_SOUND) || defined(WILLIAMS_TYPE_2_SOUND)
     SoundEffectEntry CurrentSoundPlaying;
     SoundEffectEntry SoundEffectQueue[SOUND_EFFECT_QUEUE_SIZE];
 #endif

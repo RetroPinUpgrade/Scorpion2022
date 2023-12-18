@@ -7,6 +7,7 @@
 #define DROP_TARGET_TYPE_STERN_1          1   // no solenoids to drop individual targets, one switch per target
 #define DROP_TARGET_TYPE_STERN_2          2   // clearing solenoids for individual targets, one switch per target (aka memory drops)
 #define DROP_TARGET_TYPE_WILLIAMS_1       3   // no solenoids to drop individual targets, one switch per target (momentary), switch for all targets down
+#define DROP_TARGET_TYPE_WILLIAMS_2       4   // no solenoids to drop/reset individual, one switch per target
 
 class DropTargetBank
 {

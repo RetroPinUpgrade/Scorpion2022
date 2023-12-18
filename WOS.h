@@ -36,9 +36,16 @@ void WOS_SetSoundValueLimits(unsigned short lowerLimit, unsigned short upperLimi
 void WOS_PushToSoundStack(unsigned short soundNumber, byte numPushes);
 boolean WOS_PushToTimedSoundStack(unsigned short soundNumber, byte numPushes, unsigned long whenToPlay);
 void WOS_UpdateTimedSoundStack(unsigned long curTime);
+#ifdef WOS_11_MPU
+void WOS_PlayWOS11Sound(byte soundNum);
+void WOS_PlayWOS11Music(byte songNum);
+#endif
  
 // Display Functions
 byte WOS_SetDisplay(int displayNumber, unsigned long value, boolean blankByMagnitude=false, byte minDigits=2);
+#ifdef WOS_11_MPU
+byte WOS_SetDisplayText(int displayNumber, char *text, boolean blankByLength=true);
+#endif 
 void WOS_SetDisplayBlank(int displayNumber, byte bitMask);
 void WOS_SetDisplayCredits(int value, boolean displayOn = true, boolean showBothDigits=true);
 void WOS_SetDisplayMatch(int value, boolean displayOn = true, boolean showBothDigits=true);
@@ -56,11 +63,12 @@ void WOS_ClearUpDownSwitchState();
 
 // Initialization and Utility
 void WOS_InitializeMPU(byte creditResetButton = 0xFF); 
-void WOS_SetBoardLEDs(boolean LED1, boolean LED2);
+void WOS_SetBoardLEDs(boolean LED1, boolean LED2, byte BCDValue=0xFF);
 void WOS_DataWrite(int address, byte data);
 byte WOS_DataRead(int address);
 boolean WOS_DiagnosticModeRequested();
 byte WOS_GetSwitchesNow(byte switchCol);
+void WOS_Update(unsigned long CurrentTime);
 
 // EEProm Helper Functions
 byte WOS_ReadByteFromEEProm(unsigned short startByte);

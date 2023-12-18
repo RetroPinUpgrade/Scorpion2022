@@ -195,6 +195,7 @@ uint16_t track;
     } // if (rxMsgReady)
 
   } // while (WTSerial.available() > 0)
+  
 }
 
 // **************************************************************
@@ -208,6 +209,7 @@ bool fResult = false;
     if (voiceTable[i] == ((uint16_t)trk))
       fResult = true;
   }
+  
   return fResult;
 }
 
@@ -487,10 +489,12 @@ AudioHandler::AudioHandler() {
   musicGain = 0;
   ClearSoundQueue();
   ClearSoundCardQueue();
+  ClearNotificationStack();
   currentBackgroundTrack = BACKGROUND_TRACK_NONE;
   soundtrackRandomOrder = true;
   nextSoundtrackPlayTime = 0;
   backgroundSongEndTime = 0;
+  nextVoiceNotificationPlayTime = 0;
   
   voiceNotificationStackFirst = 0;
   voiceNotificationStackLast = 0;
@@ -514,7 +518,9 @@ boolean AudioHandler::InitDevices(byte audioType) {
   if (audioType & AUDIO_PLAY_TYPE_WAV_TRIGGER) {
     // WAV Trigger startup at 57600
     wTrig.start();
+    delay(10);
     wTrig.stopAllTracks();
+    wTrig.samplerateOffset(0);
     wTrig.setReporting(true);
   }
 #endif
@@ -586,6 +592,12 @@ void AudioHandler::ClearNotificationStack(byte priority) {
   if (priority==10) {
     voiceNotificationStackFirst = 0;
     voiceNotificationStackLast = 0;
+    for (byte count=0; count<VOICE_NOTIFICATION_STACK_SIZE; count++) {
+      voiceNotificationNumStack[count] = VOICE_NOTIFICATION_STACK_EMPTY;
+      voiceNotificationDuration[count] = 0;
+      voiceNotificationPriorityStack[count] = 0;
+
+    }
   } else {
     byte tempFirst = voiceNotificationStackFirst;
     byte tempLast = voiceNotificationStackLast;
@@ -632,7 +644,7 @@ void AudioHandler::PushToNotificationStack(unsigned int notification, unsigned i
   voiceNotificationPriorityStack[voiceNotificationStackLast] = priority;
 
   voiceNotificationStackLast += 1;
-  if (voiceNotificationStackLast == VOICE_NOTIFICATION_STACK_SIZE) {
+  if (voiceNotificationStackLast >= VOICE_NOTIFICATION_STACK_SIZE) {
     // If the end index is off the end, then wrap
     voiceNotificationStackLast = 0;
   }
@@ -680,6 +692,7 @@ boolean AudioHandler::QueuePrioritizedNotification(unsigned short notificationIn
     
     wTrig.trackPlayPoly(notificationIndex);
     wTrig.trackGain(notificationIndex, notificationsGain);
+    currentNotificationStartTime = currentTime;
     
     currentNotificationPlaying = notificationIndex;
     currentNotificationPriority = priority;
@@ -718,7 +731,6 @@ void AudioHandler::OutputTracksPlaying() {
 }
 
 
-
 boolean AudioHandler::ServiceNotificationQueue(unsigned long currentTime) {
   boolean queueStillHasEntries = true;
 #if defined (USE_WAV_TRIGGER) || defined (USE_WAV_TRIGGER_1p3)
@@ -730,27 +742,27 @@ boolean AudioHandler::ServiceNotificationQueue(unsigned long currentTime) {
     }
   } else {
     if (currentNotificationPlaying!=INVALID_SOUND_INDEX && !wTrig.isTrackPlaying(currentNotificationPlaying)) {      
-      playNextNotification = true;
+      if (currentTime>(currentNotificationStartTime+100)) playNextNotification = true;
     }
   }
-
   
   if (playNextNotification) {
     byte nextPriority = 0;
     unsigned int nextNotification = VOICE_NOTIFICATION_STACK_EMPTY;
     unsigned int nextDuration = 0;
-    
+
     // Current notification done, see if there's another
+    if (voiceNotificationStackLast>=VOICE_NOTIFICATION_STACK_SIZE) voiceNotificationStackLast = (VOICE_NOTIFICATION_STACK_SIZE-1);
     while (voiceNotificationStackFirst != voiceNotificationStackLast) {
-      nextPriority = voiceNotificationPriorityStack[voiceNotificationStackFirst];;
+      nextPriority = voiceNotificationPriorityStack[voiceNotificationStackFirst];
       nextNotification = voiceNotificationNumStack[voiceNotificationStackFirst];
-      nextDuration = voiceNotificationDuration[voiceNotificationStackFirst];;
+      nextDuration = voiceNotificationDuration[voiceNotificationStackFirst];
 
       voiceNotificationStackFirst += 1;
       if (voiceNotificationStackFirst >= VOICE_NOTIFICATION_STACK_SIZE) voiceNotificationStackFirst = 0;
       if (nextNotification!=INVALID_SOUND_INDEX) break;
     }
-        
+
     if (nextNotification != VOICE_NOTIFICATION_STACK_EMPTY) {
       if (currentBackgroundTrack != BACKGROUND_TRACK_NONE) {
         wTrig.trackFade(currentBackgroundTrack, musicGain - ducking, 500, 0);
@@ -759,6 +771,7 @@ boolean AudioHandler::ServiceNotificationQueue(unsigned long currentTime) {
       else nextVoiceNotificationPlayTime = 0;
       wTrig.trackPlayPoly(nextNotification);
       wTrig.trackGain(nextNotification, notificationsGain);
+      currentNotificationStartTime = currentTime;
       currentNotificationPlaying = nextNotification;
       currentNotificationPriority = nextPriority;
     } else {
@@ -771,6 +784,7 @@ boolean AudioHandler::ServiceNotificationQueue(unsigned long currentTime) {
       currentNotificationPriority = 0;
       queueStillHasEntries = false;
     }
+    
   } 
 #else
   (void)currentTime;
@@ -955,7 +969,7 @@ void AudioHandler::InitSoundEffectQueue() {
 
 boolean AudioHandler::PlaySoundCardWhenPossible(unsigned short soundEffectNum, unsigned long currentTime, unsigned long requestedPlayTime, unsigned long playUntil, byte priority) {
 
-#if defined(WILLIAMS_TYPE_1_SOUND)
+#if defined(WILLIAMS_TYPE_1_SOUND) || defined(WILLIAMS_TYPE_2_SOUND)
   byte count = 0;
   for (count = 0; count < SOUND_EFFECT_QUEUE_SIZE; count++) {
     if (SoundEffectQueue[count].inUse == false) break;
@@ -979,10 +993,6 @@ boolean AudioHandler::PlaySoundCardWhenPossible(unsigned short soundEffectNum, u
 }
 
 
-
-void UpdateSoundQueue() {
-
-}
 
 
 boolean AudioHandler::ServiceSoundQueue(unsigned long currentTime) {
@@ -1014,7 +1024,7 @@ boolean AudioHandler::ServiceSoundCardQueue(unsigned long currentTime) {
   }
 
   return soundCommandSent;
-#elif defined WILLIAMS_TYPE_1_SOUND
+#elif defined(WILLIAMS_TYPE_1_SOUND) || defined(WILLIAMS_TYPE_2_SOUND) 
   byte highestPrioritySound = 0xFF;
   byte queuePriority = 0;
 
@@ -1063,8 +1073,7 @@ boolean AudioHandler::ServiceSoundCardQueue(unsigned long currentTime) {
 
 #else 
   // Phony stuff to get rid of warnings
-  unsigned long totalval = currentTime;
-  totalval += 1;
+  (void)currentTime;
   return false;
 #endif
 }

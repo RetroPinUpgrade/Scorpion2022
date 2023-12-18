@@ -21,6 +21,9 @@ byte DimDivisor2 = 3;
 #endif
 
 volatile byte DisplayDigits[4][WOS_NUM_DIGITS];
+#ifdef WOSS_11_MPU
+volatile byte DisplayText[2][WOS_NUM_DIGITS];
+#endif
 volatile byte DisplayCreditDigits[2];
 volatile byte DisplayCreditDigitEnable;
 volatile byte DisplayBIPDigits[2];
@@ -29,7 +32,7 @@ volatile byte DisplayDigitEnable[4];
 volatile byte BoardLEDs = 0;
 
 #define SWITCH_COLUMNS      8
-#define SWITCH_STACK_SIZE   64
+#define SWITCH_STACK_SIZE   32
 #define SWITCH_STACK_EMPTY  0xFF
 volatile byte SwitchStackFirst;
 volatile byte SwitchStackLast;
@@ -39,20 +42,20 @@ volatile byte SwitchesMinus1[SWITCH_COLUMNS];
 volatile byte SwitchesNow[SWITCH_COLUMNS];
 volatile boolean UpDownSwitch = false;
 
-#define SOUND_STACK_SIZE  32
+#define SOUND_STACK_SIZE  64
 #define SOUND_STACK_EMPTY 0x0000
 volatile byte SoundStackFirst;
 volatile byte SoundStackLast;
 volatile unsigned short SoundStack[SOUND_STACK_SIZE];
 
-#define TIMED_SOUND_STACK_SIZE  64
+#define TIMED_SOUND_STACK_SIZE  20
 struct TimedSoundEntry {
   byte inUse;
   unsigned long pushTime;
   unsigned short soundNumber;
   byte numPushes;
 };
-TimedSoundEntry TimedSoundStack[TIMED_SOUND_STACK_SIZE];
+TimedSoundEntry TimedSoundStack[TIMED_SOUND_STACK_SIZE] = {0, 0, 0, 0};
 
 #define SOLENOID_STACK_SIZE 250
 #define SOLENOID_STACK_EMPTY 0xFF
@@ -63,7 +66,7 @@ volatile byte SolenoidStack[SOLENOID_STACK_SIZE];
 boolean SolenoidStackEnabled = true;
 volatile byte CurrentSolenoidByte = 0xFF;
 
-#define TIMED_SOLENOID_STACK_SIZE 48
+#define TIMED_SOLENOID_STACK_SIZE 32
 struct TimedSolenoidEntry {
   byte inUse;
   unsigned long pushTime;
@@ -71,108 +74,122 @@ struct TimedSolenoidEntry {
   byte numPushes;
   byte disableOverride;
 };
-TimedSolenoidEntry TimedSolenoidStack[TIMED_SOLENOID_STACK_SIZE];
+TimedSolenoidEntry TimedSolenoidStack[TIMED_SOLENOID_STACK_SIZE] = {0, 0, 0, 0, 0};
 
 
-#ifdef WILLIAMS_11_MPU
+#ifdef WOSS_11_MPU
 
+const uint16_t SeventSegmentNumbers[10] = {
+  0x3F, /* 0 */
+  0x06, /* 1 */
+  0x5B, /* 2 */
+  0x4F, /* 3 */
+  0x66, /* 4 */
+  0x6D, /* 5 */
+  0x7D, /* 6 */
+  0x07, /* 7 */
+  0x7F, /* 8 */
+  0x6F  /* 9 */
+};
+
+// WOS alphanumeric 14-segment display (ASCII)
 const uint16_t FourteenSegmentASCII[96] = {
-  0x0000, /* (space) */
-  0x4006, /* ! */
-  0x0202, /* " */
-  0x12CE, /* # */
-  0x12ED, /* $ */
-  0x3FE4, /* % */
-  0x2359, /* & */
-  0x0200, /* ' */
-  0x2400, /* ( */
-  0x0900, /* ) */
-  0x3FC0, /* * */
-  0x12C0, /* + */
-  0x0800, /* , */
-  0x00C0, /* - */
-  0x4000, /* . */
-  0x0C00, /* / */
-  0x0C3F, /* 0 */
-  0x0406, /* 1 */
-  0x00DB, /* 2 */
-  0x008F, /* 3 */
-  0x00E6, /* 4 */
-  0x2069, /* 5 */
-  0x00FD, /* 6 */
-  0x0007, /* 7 */
-  0x00FF, /* 8 */
-  0x00EF, /* 9 */
-  0x1200, /* : */
-  0x0A00, /* ; */
-  0x2440, /* < */
-  0x00C8, /* = */
-  0x0980, /* > */
-  0x5083, /* ? */
-  0x02BB, /* @ */
-  0x00F7, /* A */
-  0x128F, /* B */
-  0x0039, /* C */
-  0x120F, /* D */
-  0x0079, /* E */
-  0x0071, /* F */
-  0x00BD, /* G */
-  0x00F6, /* H */
-  0x1209, /* I */
-  0x001E, /* J */
-  0x2470, /* K */
-  0x0038, /* L */
-  0x0536, /* M */
-  0x2136, /* N */
-  0x003F, /* O */
-  0x00F3, /* P */
-  0x203F, /* Q */
-  0x20F3, /* R */
-  0x00ED, /* S */
-  0x1201, /* T */
-  0x003E, /* U */
-  0x0C30, /* V */
-  0x2836, /* W */
-  0x2D00, /* X */
-  0x00EE, /* Y */
-  0x0C09, /* Z */
-  0x0039, /* [ */
-  0x2100, /* \ */
-  0x000F, /* ] */
-  0x2800, /* ^ */
-  0x0008, /* _ */
-  0x0100, /* ` */
-  0x1058, /* a */
-  0x2078, /* b */
-  0x00D8, /* c */
-  0x088E, /* d */
-  0x0858, /* e */
-  0x14C0, /* f */
-  0x048E, /* g */
-  0x1070, /* h */
-  0x1000, /* i */
-  0x0A10, /* j */
-  0x3600, /* k */
-  0x0030, /* l */
-  0x10D4, /* m */
-  0x1050, /* n */
-  0x00DC, /* o */
-  0x0170, /* p */
-  0x0486, /* q */
-  0x0050, /* r */
-  0x2088, /* s */
-  0x0078, /* t */
-  0x001C, /* u */
-  0x0810, /* v */
-  0x2814, /* w */
-  0x2D00, /* x */
-  0x028E, /* y */
-  0x0848, /* z */
-  0x0949, /* { */
-  0x1200, /* | */
-  0x2489, /* } */
-  0x0CC0, /* ~ */
-  0x0000, /* (del) */
+  0x0000,/*   converted 0x0000 to 0x0000*/
+  0x0006,/* ! converted 0x4006 to 0x0006*/
+  0x0102,/* " converted 0x0202 to 0x0102*/
+  0x154E,/* # converted 0x12CE to 0x154E*/
+  0x156D,/* $ converted 0x12ED to 0x156D*/
+  0x3FE4,/* % converted 0x3FE4 to 0x3FE4*/
+  0x09D9,/* & converted 0x2359 to 0x09D9*/
+  0x0100,/* ' converted 0x0200 to 0x0100*/
+  0x0A00,/* ( converted 0x2400 to 0x0A00*/
+  0x2080,/* ) converted 0x0900 to 0x2080*/
+  0x3FC0,/* * converted 0x3FC0 to 0x3FC0*/
+  0x1540,/* + converted 0x12C0 to 0x1540*/
+  0x2000,/* , converted 0x0800 to 0x2000*/
+  0x0440,/* - converted 0x00C0 to 0x0440*/
+  0x0000,/* . converted 0x4000 to 0x0000*/
+  0x2200,/* / converted 0x0C00 to 0x2200*/
+  0x223F,/* 0 converted 0x0C3F to 0x223F*/
+  0x0206,/* 1 converted 0x0406 to 0x0206*/
+  0x045B,/* 2 converted 0x00DB to 0x045B*/
+  0x040F,/* 3 converted 0x008F to 0x040F*/
+  0x0466,/* 4 converted 0x00E6 to 0x0466*/
+  0x0869,/* 5 converted 0x2069 to 0x0869*/
+  0x047D,/* 6 converted 0x00FD to 0x047D*/
+  0x0007,/* 7 converted 0x0007 to 0x0007*/
+  0x047F,/* 8 converted 0x00FF to 0x047F*/
+  0x046F,/* 9 converted 0x00EF to 0x046F*/
+  0x1100,/* : converted 0x1200 to 0x1100*/
+  0x2100,/* ; converted 0x0A00 to 0x2100*/
+  0x0A40,/* < converted 0x2440 to 0x0A40*/
+  0x0448,/* = converted 0x00C8 to 0x0448*/
+  0x2480,/* > converted 0x0980 to 0x2480*/
+  0x1403,/* ? converted 0x5083 to 0x1403*/
+  0x053B,/* @ converted 0x02BB to 0x053B*/
+  0x0477,/* A converted 0x00F7 to 0x0477*/
+  0x150F,/* B converted 0x128F to 0x150F*/
+  0x0039,/* C converted 0x0039 to 0x0039*/
+  0x110F,/* D converted 0x120F to 0x110F*/
+  0x0079,/* E converted 0x0079 to 0x0079*/
+  0x0071,/* F converted 0x0071 to 0x0071*/
+  0x043D,/* G converted 0x00BD to 0x043D*/
+  0x0476,/* H converted 0x00F6 to 0x0476*/
+  0x1109,/* I converted 0x1209 to 0x1109*/
+  0x001E,/* J converted 0x001E to 0x001E*/
+  0x0A70,/* K converted 0x2470 to 0x0A70*/
+  0x0038,/* L converted 0x0038 to 0x0038*/
+  0x02B6,/* M converted 0x0536 to 0x02B6*/
+  0x08B6,/* N converted 0x2136 to 0x08B6*/
+  0x003F,/* O converted 0x003F to 0x003F*/
+  0x0473,/* P converted 0x00F3 to 0x0473*/
+  0x083F,/* Q converted 0x203F to 0x083F*/
+  0x0C73,/* R converted 0x20F3 to 0x0C73*/
+  0x046D,/* S converted 0x00ED to 0x046D*/
+  0x1101,/* T converted 0x1201 to 0x1101*/
+  0x003E,/* U converted 0x003E to 0x003E*/
+  0x2230,/* V converted 0x0C30 to 0x2230*/
+  0x2836,/* W converted 0x2836 to 0x2836*/
+  0x2A80,/* X converted 0x2D00 to 0x2A80*/
+  0x046E,/* Y converted 0x00EE to 0x046E*/
+  0x2209,/* Z converted 0x0C09 to 0x2209*/
+  0x0039,/* [ converted 0x0039 to 0x0039*/
+  0x0880,/* \ converted 0x2100 to 0x0880*/
+  0x000F,/* ] converted 0x000F to 0x000F*/
+  0x2800,/* ^ converted 0x2800 to 0x2800*/
+  0x0008,/* _ converted 0x0008 to 0x0008*/
+  0x0080,/* ` converted 0x0100 to 0x0080*/
+  0x1058,/* a converted 0x1058 to 0x1058*/
+  0x0878,/* b converted 0x2078 to 0x0878*/
+  0x0458,/* c converted 0x00D8 to 0x0458*/
+  0x240E,/* d converted 0x088E to 0x240E*/
+  0x2058,/* e converted 0x0858 to 0x2058*/
+  0x1640,/* f converted 0x14C0 to 0x1640*/
+  0x060E,/* g converted 0x048E to 0x060E*/
+  0x1070,/* h converted 0x1070 to 0x1070*/
+  0x1000,/* i converted 0x1000 to 0x1000*/
+  0x2110,/* j converted 0x0A10 to 0x2110*/
+  0x1B00,/* k converted 0x3600 to 0x1B00*/
+  0x0030,/* l converted 0x0030 to 0x0030*/
+  0x1454,/* m converted 0x10D4 to 0x1454*/
+  0x1050,/* n converted 0x1050 to 0x1050*/
+  0x045C,/* o converted 0x00DC to 0x045C*/
+  0x00F0,/* p converted 0x0170 to 0x00F0*/
+  0x0606,/* q converted 0x0486 to 0x0606*/
+  0x0050,/* r converted 0x0050 to 0x0050*/
+  0x0C08,/* s converted 0x2088 to 0x0C08*/
+  0x0078,/* t converted 0x0078 to 0x0078*/
+  0x001C,/* u converted 0x001C to 0x001C*/
+  0x2010,/* v converted 0x0810 to 0x2010*/
+  0x2814,/* w converted 0x2814 to 0x2814*/
+  0x2A80,/* x converted 0x2D00 to 0x2A80*/
+  0x050E,/* y converted 0x028E to 0x050E*/
+  0x2048,/* z converted 0x0848 to 0x2048*/
+  0x20C9,/* { converted 0x0949 to 0x20C9*/
+  0x1100,/* | converted 0x1200 to 0x1100*/
+  0x0E09,/* } converted 0x2489 to 0x0E09*/
+  0x2640,/* ~ converted 0x0CC0 to 0x2640*/
+  0x0000 /*  converted 0x0000 to 0x0000*/
 };
 
 #endif
@@ -241,11 +258,25 @@ const uint16_t FourteenSegmentASCII[96] = {
 #define PIA_SOLENOID_CONTROL_A  0x2201
 #define PIA_SOLENOID_PORT_B     0x2202
 #define PIA_SOLENOID_CONTROL_B  0x2203
-#ifdef WILLIAMS_11_MPU
+#ifdef WOS_7_MPU
+#define PIA_SOUND_COMMA_PORT_A      0x2100
+#define PIA_SOUND_COMMA_CONTROL_A   0x2101
+#define PIA_SOUND_COMMA_PORT_B      0x2102
+#define PIA_SOUND_COMMA_CONTROL_B   0x2103
+#endif
+#ifdef WOSS_11_MPU
 #define PIA_SOUND_11_PORT_A             0x2100
 #define PIA_SOUND_11_CONTROL_A          0x2101
 #define PIA_SOLENOID_11_PORT_B          0x2102
 #define PIA_SOLENOID_11_CONTROL_B       0x2103
+#define PIA_ALPHA_DISPLAY_PORT_A        0x2C00
+#define PIA_ALPHA_DISPLAY_CONTROL_A     0x2C01
+#define PIA_ALPHA_DISPLAY_PORT_B        0x2C02
+#define PIA_ALPHA_DISPLAY_CONTROL_B     0x2C03
+#define PIA_NUM_DISPLAY_PORT_A          0x3400
+#define PIA_NUM_DISPLAY_CONTROL_A       0x3401
+#define PIA_WIDGET_PORT_B               0x3402
+#define PIA_WIDGET_CONTROL_B            0x3403
 #endif
 
 #define WOS_PINS_OUTPUT true
@@ -570,38 +601,81 @@ void WOS_InitializePIAs() {
   WOS_DataWrite(PIA_LAMPS_CONTROL_B, 0x3C);
   WOS_DataWrite(PIA_LAMPS_PORT_B, 0x00);
 
-#ifndef WILLIAMS_11_MPU
+#ifndef WOS_11_MPU
   WOS_DataWrite(PIA_SOLENOID_CONTROL_A, 0x38);
   WOS_DataWrite(PIA_SOLENOID_PORT_A, 0xFF);
   WOS_DataWrite(PIA_SOLENOID_CONTROL_A, 0x3C);
 #endif
   WOS_DataWrite(PIA_SOLENOID_PORT_A, 0x00);
 
-#ifndef WILLIAMS_11_MPU
+#ifndef WOS_11_MPU
   WOS_DataWrite(PIA_SOLENOID_CONTROL_B, 0x30);
   WOS_DataWrite(PIA_SOLENOID_PORT_B, 0xFF);
   WOS_DataWrite(PIA_SOLENOID_CONTROL_B, 0x34);
   WOS_DataWrite(PIA_SOLENOID_PORT_B, 0x00);
 #endif
 
-#ifdef WILLIAMS_11_MPU
+#ifdef WOS_11_MPU
   WOS_DataWrite(PIA_SOLENOID_11_CONTROL_B, 0x38);
   WOS_DataWrite(PIA_SOLENOID_11_PORT_B, 0xFF);
   WOS_DataWrite(PIA_SOLENOID_11_CONTROL_B, 0x3C);
   WOS_DataWrite(PIA_SOLENOID_11_PORT_B, 0x00);
+
+  WOS_DataWrite(PIA_ALPHA_DISPLAY_CONTROL_A, 0x38);
+  WOS_DataWrite(PIA_ALPHA_DISPLAY_PORT_A, 0xFF);
+  WOS_DataWrite(PIA_ALPHA_DISPLAY_CONTROL_A, 0x3C);
+  WOS_DataWrite(PIA_ALPHA_DISPLAY_PORT_A, 0x00);
+
+  WOS_DataWrite(PIA_ALPHA_DISPLAY_CONTROL_B, 0x38);
+  WOS_DataWrite(PIA_ALPHA_DISPLAY_PORT_B, 0xFF);
+  WOS_DataWrite(PIA_ALPHA_DISPLAY_CONTROL_B, 0x3C);
+  WOS_DataWrite(PIA_ALPHA_DISPLAY_PORT_B, 0x00);
+
+  WOS_DataWrite(PIA_NUM_DISPLAY_CONTROL_A, 0x38);
+  WOS_DataWrite(PIA_NUM_DISPLAY_PORT_A, 0xFF);
+  WOS_DataWrite(PIA_NUM_DISPLAY_CONTROL_A, 0x3C);
+  WOS_DataWrite(PIA_NUM_DISPLAY_PORT_A, 0x00);
+
+  WOS_DataWrite(PIA_SOUND_11_CONTROL_A, 0x38);
+  WOS_DataWrite(PIA_SOUND_11_PORT_A, 0xFF);
+  WOS_DataWrite(PIA_SOUND_11_CONTROL_A, 0x3C);
+  WOS_DataWrite(PIA_SOUND_11_PORT_A, 0x00);
+
+  WOS_DataWrite(PIA_WIDGET_CONTROL_B, 0x38);
+  WOS_DataWrite(PIA_WIDGET_PORT_B, 0xFF);
+  WOS_DataWrite(PIA_WIDGET_CONTROL_B, 0x3C);
+  WOS_DataWrite(PIA_WIDGET_PORT_B, 0x00);
+#endif
+
+#ifdef WOS_7_MPU
+  WOS_DataWrite(PIA_SOUND_COMMA_CONTROL_A, 0x38);
+  WOS_DataWrite(PIA_SOUND_COMMA_PORT_A, 0xFF);
+  WOS_DataWrite(PIA_SOUND_COMMA_CONTROL_A, 0x3C);
+  WOS_DataWrite(PIA_SOUND_COMMA_PORT_A, 0x00);  
+
+  WOS_DataWrite(PIA_SOUND_COMMA_CONTROL_B, 0x38);
+  WOS_DataWrite(PIA_SOUND_COMMA_PORT_B, 0xFF);
+  WOS_DataWrite(PIA_SOUND_COMMA_CONTROL_B, 0x3C);
+  WOS_DataWrite(PIA_SOUND_COMMA_PORT_B, 0x00);
 #endif
 
 }
 
-void WOS_SetBoardLEDs(boolean LED1, boolean LED2) {
+void WOS_SetBoardLEDs(boolean LED1, boolean LED2, byte BCDValue) {
   BoardLEDs = 0;
-  if (LED1) BoardLEDs |= 0x20;
-  if (LED2) BoardLEDs |= 0x10;
+  if (BCDValue==0xFF) {
+    if (LED1) BoardLEDs |= 0x20;
+    if (LED2) BoardLEDs |= 0x10;
+  } else {
+    BoardLEDs = BCDValue * 16;
+  }
 }
 
 
 
 void WOS_SetupInterrupt() {
+  pinMode(13,OUTPUT);
+  digitalWrite(13, 0);
   cli();
   //set timer1 interrupt at 1Hz
   TCCR1A = 0;// set entire TCCR1A register to 0
@@ -635,7 +709,11 @@ void WOS_ClearVariables() {
     for (byte digit=0; digit<WOS_NUM_DIGITS; digit++) {
       DisplayDigits[count][digit] = 0;
     }
-    DisplayDigitEnable[count] = 0x3F;
+    if (WOS_NUM_DIGITS==6) {    
+      DisplayDigitEnable[count] = 0x3F;
+    } else if (WOS_NUM_DIGITS==7) {
+      DisplayDigitEnable[count] = 0x7F;
+    }
   }
 
   for (byte count=0; count<2; count++) {
@@ -664,6 +742,20 @@ void WOS_ClearVariables() {
   SoundStackFirst = 0;
   SoundStackLast = 0;
 
+  for (byte count=0; count<TIMED_SOLENOID_STACK_SIZE; count++) {
+    TimedSolenoidStack[count].inUse = 0;
+    TimedSolenoidStack[count].pushTime = 0;
+    TimedSolenoidStack[count].solenoidNumber = 0;
+    TimedSolenoidStack[count].numPushes = 0;
+    TimedSolenoidStack[count].disableOverride = 0;
+  }
+
+  for (byte count=0; count<TIMED_SOUND_STACK_SIZE; count++) {
+    TimedSoundStack[count].inUse = 0;
+    TimedSoundStack[count].pushTime = 0;
+    TimedSoundStack[count].soundNumber = 0;
+    TimedSoundStack[count].numPushes = 0;
+  }
 }
 
 /*
@@ -754,11 +846,22 @@ int SpaceLeftOnSoundStack() {
   return (SoundStackFirst - SoundStackLast) - 1;
 }
 
+#ifdef WOS_7_MPU
+void WOS_PlayType2Sound(byte soundNumber) {
+#ifndef WOS_TYPE_2_SOUND
+return;
+#endif
+  WOS_DataWrite(PIA_SOUND_COMMA_PORT_A, (~soundNumber) & 0x7F);
+}
+#endif
+
 
 void WOS_PushToSoundStack(unsigned short soundNumber, byte numPushes) {  
-  // If the solenoid stack last index is out of range, then it's an error - return
+  // If the solenoid stack last index is out of range, then it's an error - return  
   if (SpaceLeftOnSoundStack()==0) return;
   if (soundNumber<SoundLowerLimit || soundNumber>SoundUpperLimit) return;
+
+  //Serial.write("SoundPush\n");
 
   for (int count=0; count<numPushes; count++) {
     SoundStack[SoundStackLast] = soundNumber;
@@ -804,16 +907,33 @@ boolean WOS_PushToTimedSoundStack(unsigned short soundNumber, byte numPushes, un
 }
 
 
-void WOS_UpdateTimedSoundStack(unsigned long curTime) {
+void WOS_UpdateTimedSoundStack(unsigned long curTime) { 
   for (int count=0; count<TIMED_SOUND_STACK_SIZE; count++) {
     if (TimedSoundStack[count].inUse && TimedSoundStack[count].pushTime<curTime) {
+      //Serial.write("Sound\n");
       WOS_PushToSoundStack(TimedSoundStack[count].soundNumber, TimedSoundStack[count].numPushes);
       TimedSoundStack[count].inUse = false;
     }
   }
 }
 
+#ifdef WOS_11_MPU
+void WOS_PlayWOS11Sound(byte soundNum) {
+  WOS_DataWrite(PIA_SOUND_11_PORT_A, soundNum);
+  // Strobe CA2
+  WOS_DataWrite(PIA_SOUND_11_CONTROL_A, 0x34);
+  WOS_DataWrite(PIA_SOUND_11_CONTROL_A, 0x3C);
+}
 
+void WOS_PlayWOS11Music(byte songNum) {
+  WOS_DataWrite(PIA_WIDGET_PORT_B, songNum);
+  // Strobe CA2
+  WOS_DataWrite(PIA_WIDGET_CONTROL_B, 0x34);
+  WOS_DataWrite(PIA_WIDGET_CONTROL_B, 0x3C);
+}
+
+
+#endif
 
 /*
  * Solenoid handling functions
@@ -863,6 +983,8 @@ int SpaceLeftOnSolenoidStack() {
 
 void WOS_PushToSolenoidStack(byte solenoidNumber, byte numPushes, boolean disableOverride) {
   if (solenoidNumber>21) return;
+
+  //Serial.write("SolPush\n");
 
   // if the solenoid stack is disabled and this isn't an override push, then return
   if (!disableOverride && !SolenoidStackEnabled) return;
@@ -929,6 +1051,7 @@ boolean WOS_PushToTimedSolenoidStack(byte solenoidNumber, byte numPushes, unsign
 void WOS_UpdateTimedSolenoidStack(unsigned long curTime) {
   for (int count=0; count<TIMED_SOLENOID_STACK_SIZE; count++) {
     if (TimedSolenoidStack[count].inUse && TimedSolenoidStack[count].pushTime<curTime) {
+      //Serial.write("Solenoid\n");
       WOS_PushToSolenoidStack(TimedSolenoidStack[count].solenoidNumber, TimedSolenoidStack[count].numPushes, TimedSolenoidStack[count].disableOverride);
       TimedSolenoidStack[count].inUse = false;
     }
@@ -946,6 +1069,86 @@ void WOS_UpdateTimedSolenoidStack(unsigned long curTime) {
  * 
  */
 
+#ifdef WOS_11_MPU
+byte WOS_SetDisplayText(int displayNumber, char *text, boolean blankByLength) {
+  if (displayNumber>1 || displayNumber<0) return 0;
+  byte stringLength = 0xff;
+  boolean writeSpace = false;
+  byte blank = 0;
+  byte placeMask = 0x01;
+
+  for (stringLength=0; stringLength<WOS_NUM_DIGITS; stringLength++) {
+    if (text[stringLength]==0) writeSpace = true;
+    if (!writeSpace) DisplayText[displayNumber][stringLength] = (byte)text[stringLength]-0x20;
+    else DisplayText[displayNumber][stringLength] = 0;
+
+    if (DisplayText[displayNumber][stringLength]) blank |= placeMask;
+    placeMask *= 2;
+  }
+
+  if (blankByLength) DisplayDigitEnable[displayNumber] = blank;
+
+  return stringLength;
+}
+
+// Architectures with alpha store numbers as 7-seg
+byte WOS_SetDisplay(int displayNumber, unsigned long value, boolean blankByMagnitude, byte minDigits) {
+  if (displayNumber<0 || displayNumber>3) return 0;
+
+  byte blank = 0x00;
+
+  for (int count=0; count<WOS_NUM_DIGITS; count++) {
+    blank = blank * 2;
+    if (value!=0 || count<minDigits) {
+      blank |= 1;
+      if (displayNumber/2) DisplayDigits[displayNumber][(WOS_NUM_DIGITS-1)-count] = SeventSegmentNumbers[value%10];
+      else DisplayText[displayNumber][(WOS_NUM_DIGITS-1)-count] = (value%10)+16;
+    } else {
+      if (displayNumber/2) DisplayDigits[displayNumber][(WOS_NUM_DIGITS-1)-count] = 0;
+      else DisplayText[displayNumber][(WOS_NUM_DIGITS-1)-count] = 0;
+    }
+    value /= 10;    
+  }
+  
+  if (blankByMagnitude) DisplayDigitEnable[displayNumber] = blank;
+  
+  return blank;
+}
+
+
+void WOS_SetDisplayCredits(int value, boolean displayOn, boolean showBothDigits) {
+  byte blank = 0x02;
+  value = value % 100;
+  if (value>=10) {
+    DisplayCreditDigits[0] = SeventSegmentNumbers[value/10];
+    blank |= 1;
+  } else {
+    DisplayCreditDigits[0] = SeventSegmentNumbers[0];
+    if (showBothDigits) blank |= 1;
+  }
+  DisplayCreditDigits[1] = SeventSegmentNumbers[value%10];
+  if (displayOn) DisplayCreditDigitEnable = blank;
+  else DisplayCreditDigitEnable = 0;
+}
+
+void WOS_SetDisplayBallInPlay(int value, boolean displayOn, boolean showBothDigits) {
+  byte blank = 0x02;
+  value = value % 100;
+  if (value>=10) {
+    DisplayBIPDigits[0] = SeventSegmentNumbers[value/10];
+    blank |= 1;
+  } else {
+    DisplayBIPDigits[0] = SeventSegmentNumbers[0];
+    if (showBothDigits) blank |= 1;
+  }
+  DisplayBIPDigits[1] = SeventSegmentNumbers[value%10];
+  if (displayOn) DisplayBIPDigitEnable = blank;
+  else DisplayBIPDigitEnable = 0;  
+}
+
+
+#else
+// Architectures without alpha store numbers as BCD
 byte WOS_SetDisplay(int displayNumber, unsigned long value, boolean blankByMagnitude, byte minDigits) {
   if (displayNumber<0 || displayNumber>3) return 0;
 
@@ -963,10 +1166,7 @@ byte WOS_SetDisplay(int displayNumber, unsigned long value, boolean blankByMagni
   return blank;
 }
 
-void WOS_SetDisplayBlank(int displayNumber, byte bitMask) {
-  if (displayNumber<0 || displayNumber>3) return;
-  DisplayDigitEnable[displayNumber] = bitMask;
-}
+
 
 void WOS_SetDisplayCredits(int value, boolean displayOn, boolean showBothDigits) {
   byte blank = 0x02;
@@ -998,6 +1198,16 @@ void WOS_SetDisplayBallInPlay(int value, boolean displayOn, boolean showBothDigi
   else DisplayBIPDigitEnable = 0;  
 }
 
+
+#endif
+
+
+void WOS_SetDisplayBlank(int displayNumber, byte bitMask) {
+  if (displayNumber<0 || displayNumber>3) return;
+  DisplayDigitEnable[displayNumber] = bitMask;
+}
+
+
 void WOS_SetDisplayMatch(int value, boolean displayOn, boolean showBothDigits) {
   WOS_SetDisplayBallInPlay(value, displayOn, showBothDigits);  
 }
@@ -1005,7 +1215,9 @@ void WOS_SetDisplayMatch(int value, boolean displayOn, boolean showBothDigits) {
 void WOS_CycleAllDisplays(unsigned long curTime, byte digitNum) {
   int displayDigit = (curTime/250)%10;
   unsigned long value;
+  
   value = displayDigit*111111;
+  if (WOS_NUM_DIGITS==7) value = displayDigit*1111111;
 
   byte displayNumToShow = 0;
   byte displayBlank = 0x3F;
@@ -1021,7 +1233,7 @@ void WOS_CycleAllDisplays(unsigned long curTime, byte digitNum) {
       if (count==displayNumToShow) WOS_SetDisplayBlank(count, displayBlank);
       else WOS_SetDisplayBlank(count, 0);
     } else {
-      WOS_SetDisplay(count, value, true);
+      WOS_SetDisplay(count, value, true, WOS_NUM_DIGITS);
     }
   }
   if (digitNum) {
@@ -1124,11 +1336,17 @@ volatile byte LampStrobe = 0;
 volatile byte DisplayStrobe = 0;
 volatile byte InterruptPass = 0;
 boolean NeedToTurnOffTriggeredSolenoids = true;
+#if (WOS_NUM_DIGITS==6)
 byte BlankingBit[16] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x01, 0x02, 0x01, 0x02, 0x04, 0x08, 0x010, 0x20, 0x01, 0x02};
+#elif (WOS_NUM_DIGITS==7) 
+byte BlankingBit[16] = {0x01, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x02, 0x01, 0x02, 0x04, 0x08, 0x010, 0x20, 0x40};
+#endif
 volatile byte UpDownPassCounter = 0;
 
 // INTERRUPT HANDLER
 ISR(TIMER1_COMPA_vect) {    //This is the interrupt request (running at 965.3 Hz)
+
+  digitalWrite(13, 1);
 
   byte displayControlPortB = WOS_DataRead(PIA_DISPLAY_CONTROL_B);
   if (displayControlPortB & 0x80) {
@@ -1144,7 +1362,49 @@ ISR(TIMER1_COMPA_vect) {    //This is the interrupt request (running at 965.3 Hz
     }
   }
 
-#ifdef WILLIAMS_11_MPU
+#ifdef WOS_11_MPU
+  // Create display data
+  unsigned int digit1 = 0x0000;
+  byte digit2 = 0x00;
+  byte blankingBit = BlankingBit[DisplayStrobe];
+  if (DisplayStrobe==0) {
+    if (DisplayBIPDigitEnable&blankingBit) digit1 = DisplayBIPDigits[0];
+    if (DisplayCreditDigitEnable&blankingBit) digit2 = DisplayCreditDigits[0];
+  } else if (DisplayStrobe<8) {    
+    if (DisplayDigitEnable[0]&blankingBit) digit1 = FourteenSegmentASCII[DisplayText[0][DisplayStrobe-1]];
+    if (DisplayDigitEnable[2]&blankingBit) digit2 = DisplayDigits[2][DisplayStrobe-1];
+  } else if (DisplayStrobe==8) {
+    if (DisplayBIPDigitEnable&blankingBit) digit1 = DisplayBIPDigits[1];
+    if (DisplayCreditDigitEnable&blankingBit) digit2 = DisplayCreditDigits[1];
+  } else {
+    if (DisplayDigitEnable[1]&blankingBit) digit1 = FourteenSegmentASCII[DisplayText[1][DisplayStrobe-9]];
+    if (DisplayDigitEnable[3]&blankingBit) digit2 = DisplayDigits[3][DisplayStrobe-9];
+  }
+  // Show current display digit
+  WOS_DataWrite(PIA_DISPLAY_PORT_A, BoardLEDs|DisplayStrobe);
+  WOS_DataWrite(PIA_ALPHA_DISPLAY_PORT_A, (digit1>>7) & 0x7F);
+  WOS_DataWrite(PIA_ALPHA_DISPLAY_PORT_B, digit1 & 0x7F);
+  WOS_DataWrite(PIA_DISPLAY_PORT_B, digit2 & 0x7F);  
+#elif defined(WOS_7_MPU)
+  // Create display data
+  byte digit1 = 0x0F, digit2 = 0x0F;
+  byte blankingBit = BlankingBit[DisplayStrobe];
+  if (DisplayStrobe==0) {
+    if (DisplayBIPDigitEnable&blankingBit) digit1 = DisplayBIPDigits[0];
+    if (DisplayCreditDigitEnable&blankingBit) digit2 = DisplayCreditDigits[0];
+  } else if (DisplayStrobe<8) {
+    if (DisplayDigitEnable[0]&blankingBit) digit1 = DisplayDigits[0][DisplayStrobe-1];
+    if (DisplayDigitEnable[2]&blankingBit) digit2 = DisplayDigits[2][DisplayStrobe-1];
+  } else if (DisplayStrobe==8) {
+    if (DisplayBIPDigitEnable&blankingBit) digit1 = DisplayBIPDigits[1];
+    if (DisplayCreditDigitEnable&blankingBit) digit2 = DisplayCreditDigits[1];
+  } else {
+    if (DisplayDigitEnable[1]&blankingBit) digit1 = DisplayDigits[1][DisplayStrobe-9];
+    if (DisplayDigitEnable[3]&blankingBit) digit2 = DisplayDigits[3][DisplayStrobe-9];
+  }
+  // Show current display digit
+  WOS_DataWrite(PIA_DISPLAY_PORT_A, BoardLEDs|DisplayStrobe);
+  WOS_DataWrite(PIA_DISPLAY_PORT_B, digit1*16 | (digit2&0x0F));
 #else
   // Create display data
   byte digit1 = 0x0F, digit2 = 0x0F;
@@ -1272,7 +1532,7 @@ ISR(TIMER1_COMPA_vect) {    //This is the interrupt request (running at 965.3 Hz
     }
 
     WOS_DataWrite(PIA_SOLENOID_PORT_A, portA);
-#ifdef WILLIAMS_11_MPU
+#ifdef WOS_11_MPU
     WOS_DataWrite(PIA_SOLENOID_11_PORT_B, portB);
 #else 
     WOS_DataWrite(PIA_SOLENOID_PORT_B, portB);
@@ -1281,6 +1541,9 @@ ISR(TIMER1_COMPA_vect) {    //This is the interrupt request (running at 965.3 Hz
 
 //  WOS_DataWrite(PIA_SOLENOID_11_PORT_B, InterruptPass);
   InterruptPass ^= 1;
+
+  digitalWrite(13, 0);
+  
 }
 
 
@@ -1368,7 +1631,7 @@ void WOS_InitializeMPU(byte creditResetButton) {
 
   //Serial.write("Checking for credit button\n");
   // see if the credit button is being pressed
-  if (0 && creditResetButton!=0xFF) {
+  if (creditResetButton!=0xFF) {
     byte strobeLine = 0x01 << (creditResetButton/8);
     byte returnLine = 0x01 << (creditResetButton%8);
 
@@ -1424,8 +1687,7 @@ void WOS_InitializeMPU(byte creditResetButton) {
     digitalWrite(RPU_RESET_PIN, 1);
 
     while (1);    
-  }
-  
+  }  
 
   WOS_ClearVariables();
   WOS_SetAddressPinsDirection(WOS_PINS_OUTPUT);
@@ -1437,4 +1699,10 @@ void WOS_InitializeMPU(byte creditResetButton) {
 
 byte WOS_GetSwitchesNow(byte switchCol) {
   return SwitchesNow[switchCol];
+}
+
+void WOS_Update(unsigned long CurrentTime) {
+  WOS_ApplyFlashToLamps(CurrentTime);
+  WOS_UpdateTimedSolenoidStack(CurrentTime);
+  WOS_UpdateTimedSoundStack(CurrentTime);
 }
