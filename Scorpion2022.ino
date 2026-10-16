@@ -1046,7 +1046,7 @@ void ShowTopLaneLamps() {
     }
   } else {
     boolean engaged = (CurrentWeaponsEngaged[CurrentPlayer]&WEAPONS_MODE_AIR_ASSAULT)?true:false;
-    boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_AIR_ASSAULT]<100)?true:false;
+    boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_AIR_ASSAULT-1]<100)?true:false;
     if (SkillShotLaneHitTime) {
       WOS_SetLampState(LAMP_4_TOP_LANE, SkillShotLaneHit==0, 0, 250);
       WOS_SetLampState(LAMP_5_TOP_LANE, SkillShotLaneHit==1, 0, 250);
@@ -1179,7 +1179,7 @@ void ShowLeftSaucerLamps() {
       if (BonusLeftChanged==0) {
         byte showBonus = BonusLeft[CurrentPlayer];
         boolean engaged = (CurrentWeaponsEngaged[CurrentPlayer]&WEAPONS_MODE_BLUE_LASER)?true:false;
-        boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_BLUE_LASER]<100)?true:false;
+        boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_BLUE_LASER-1]<100)?true:false;
         if (!unfinished) engaged = false;
         byte engagedPhase = (CurrentTime/100)%9;
         
@@ -1309,7 +1309,7 @@ void ShowRightSaucerLamps() {
       if (BonusRightChanged==0) {
         byte showBonus = BonusRight[CurrentPlayer];
         boolean engaged = (CurrentWeaponsEngaged[CurrentPlayer]&WEAPONS_MODE_GREEN_LASER)?true:false;
-        boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_GREEN_LASER]<100)?true:false;
+        boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_GREEN_LASER-1]<100)?true:false;
         if (!unfinished) engaged = false;
         byte engagedPhase = (CurrentTime/100)%9;
         WOS_SetLampState(LAMP_RIGHT_10K, (showBonus>=10), 0, (showBonus>10)?750:0);
@@ -1400,7 +1400,7 @@ void ShowStandupLamps() {
     }
   } else {
     boolean engaged = (CurrentWeaponsEngaged[CurrentPlayer]&WEAPONS_MODE_HARPOONS)?true:false;
-    boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_HARPOONS]<100)?true:false;
+    boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_HARPOONS-1]<100)?true:false;
     
     if (StandupsCompletedTime) {
       byte lampPhase = (CurrentTime/100)%3;
@@ -1471,7 +1471,7 @@ void Show3DropLamps() {
     
   } else {
     boolean engaged = (CurrentWeaponsEngaged[CurrentPlayer]&WEAPONS_MODE_DEPTH_CHARGES)?true:false;
-    boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_DEPTH_CHARGES]<100)?true:false;
+    boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_DEPTH_CHARGES-1]<100)?true:false;
     
     for (int count=0;count<5;count++) {
 //      WOS_SetLampState(LAMP_3_DROPS_10K+count, ((count)==Drop6Clears[CurrentPlayer]) || engaged, ((count)!=Drop6Clears[CurrentPlayer])?2:0, ((count)!=Drop6Clears[CurrentPlayer] && unfinished)?300:0);
@@ -1498,7 +1498,7 @@ void ShowTimerLamps() {
     WOS_SetLampState(LAMP_5_DROP_LIGHTS_OUTLANES, 1, 0, RightVictoryReady?0:200);
   } else {
     boolean engaged = (CurrentWeaponsEngaged[CurrentPlayer]&WEAPONS_MODE_TORPEDOES)&&(((CurrentTime/200)%3)==0)?true:false;
-    boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_TORPEDOES]<100)?true:false;
+    boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_TORPEDOES-1]<100)?true:false;
     WOS_SetLampState(LAMP_5_DROP_LIGHTS_OUTLANES, engaged&&unfinished);
   }
 }
@@ -1557,7 +1557,7 @@ void ShowPopBumperLamps() {
       WOS_SetLampState(LAMP_SPINNER_AND_LOWER_POP, lowerRecent, 0, 25);
     } else {
       boolean engaged = (CurrentWeaponsEngaged[CurrentPlayer]&WEAPONS_MODE_CANNONS)?true:false;
-      boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPONS_MODE_CANNONS]<100)?true:false;
+      boolean unfinished = (WeaponsStatus[CurrentPlayer][WEAPON_INDEX_CANNONS-1]<100)?true:false;
 
       if (engaged) {
         for (int count=0;count<3;count++) {
